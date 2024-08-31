@@ -19,7 +19,7 @@ const chess = new Chess();
 
 //stores w/b with it's id as socket_id
 const players = {};
-const currentPlayer = 'W';
+const currentPlayer = 'w';
 
 // set the view engine to ejs
 app.set('view engine','ejs');
