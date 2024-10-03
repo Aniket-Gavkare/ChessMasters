@@ -30,6 +30,7 @@ const renderBoard = () => {
                     square.color === "w" ? "white" : "black"
                 );
 
+                pieceElement.innerText = getPieceUnicode(square.type);
                 pieceElement.draggable = playerRole === square.color;
 
                 // handle dragging of pieces
@@ -75,6 +76,25 @@ const renderBoard = () => {
 };
 
 const handleMove = () => {}; 
-const getPieceUnicode = () => {}; 
+
+const getPieceUnicode = (piece) => {
+    const unicodePieces = {
+        p: "\u2659", // white pawn
+        r: "\u2656", // white rook
+        n: "\u2658", // white knight
+        b: "\u2657", // white bishop
+        q: "\u2655", // white queen
+        k: "\u2654", // white king
+        P: "\u265F", // black pawn
+        R: "\u265C", // black rook
+        N: "\u265E", // black knight
+        B: "\u265D", // black bishop
+        Q: "\u265B", // black queen
+        K: "\u265A", // black king
+    };
+    
+    return unicodePieces[piece] || null;
+};
+
 
 renderBoard();
