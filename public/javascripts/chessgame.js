@@ -3,9 +3,9 @@ const chess = new Chess();
 
 const boardElement = document.querySelector('.chessboard');
 
-const draggedPrice = null;
-const sourceSquare = null;
-const playerRole = null;
+let draggedPiece = null;
+let sourceSquare = null;
+let playerRole = null;
 
 const renderBoard = () => {
     const board = chess.board();
@@ -19,10 +19,9 @@ const renderBoard = () => {
                 (rowIndex + squareIndex) % 2 === 0 ? "light" : "dark"
             );
 
-            squareElement.dataset.row = row;
+            squareElement.dataset.row = rowIndex;
             squareElement.dataset.col = squareIndex;
 
-            // working with pieces
             if (square) {
                 const pieceElement = document.createElement("div");
                 pieceElement.classList.add(
@@ -33,49 +32,60 @@ const renderBoard = () => {
                 pieceElement.innerText = getPieceUnicode(square.type);
                 pieceElement.draggable = playerRole === square.color;
 
-                // handle dragging of pieces
                 pieceElement.addEventListener("dragstart", (e) => {
                     if (pieceElement.draggable) {
-                        draggedPrice = pieceElement;
+                        draggedPiece = pieceElement;
                         sourceSquare = {
                             row: rowIndex,
                             col: squareIndex,
-                        }
-                        e.dataTransfer.setData("text/plain","");
-                    } 
+                        };
+                        e.dataTransfer.setData("text/plain", "");
+                    }
                 });
 
-                pieceElement.addEventListener("dragend",(e)=>{
-                    draggedPrice = null;
+                pieceElement.addEventListener("dragend", (e) => {
+                    draggedPiece = null;
                     sourceSquare = null;
-                });   
+                });
 
                 squareElement.appendChild(pieceElement);
             }
-            //if tried to drag a square
-            squareElement.addEventListener("dragover",(e)=>{
+
+            squareElement.addEventListener("dragover", (e) => {
                 e.preventDefault();
             });
 
-            //handle the dropping of dragged piece
-            squareElement.addEventListener("drop",(e)=>{
+            squareElement.addEventListener("drop", (e) => {
                 e.preventDefault();
-                if(draggedPrice){
+                if (draggedPiece) {
                     const targetSquare = {
-                        row : parseInt(squareElement.dataset.row) ,
-                        col : parseInt(squareElement.dataset.col) 
-                    }
+                        row: parseInt(squareElement.dataset.row),
+                        col: parseInt(squareElement.dataset.col)
+                    };
+                    handleMove(sourceSquare, targetSquare);
                 }
-
-                handleMove(sourceSquare,targetSquare)
-            })
+            });
 
             boardElement.appendChild(squareElement);
         });
     });
+
+    if (playerRole === 'b') {
+        boardElement.classList.add("flipped");
+    } else {
+        boardElement.classList.remove("flipped");
+    }
 };
 
-const handleMove = () => {}; 
+const handleMove = (sourceSquare, targetSquare) => {
+    const move = {
+        from: `${String.fromCharCode(97 + sourceSquare.col)}${8 - sourceSquare.row}`,
+        to: `${String.fromCharCode(97 + targetSquare.col)}${8 - targetSquare.row}`,
+        promotion: "q"
+    };
+
+    socket.emit("move", move);
+};
 
 const getPieceUnicode = (piece) => {
     const unicodePieces = {
@@ -96,5 +106,29 @@ const getPieceUnicode = (piece) => {
     return unicodePieces[piece] || null;
 };
 
+socket.on("playerRole", (role) => {
+    playerRole = role;
+    renderBoard();
+});
+
+socket.on("spectator", () => {
+    playerRole = null;
+    renderBoard();
+});
+
+socket.on("boardState", (fen) => {
+    chess.load(fen);
+    renderBoard();
+});
+
+socket.on("move", (move) => {
+    chess.move(move);
+    renderBoard();
+});
+
+socket.on("invalidMove", (move) => {
+    console.log("Invalid move:", move);
+    renderBoard();
+});
 
 renderBoard();

@@ -1,93 +1,76 @@
-// importing essentials
 const express = require('express');
 const http = require('http');
 const socket = require('socket.io');
-const { Chess } = require ('chess.js');
-
-//path to serve static files
+const { Chess } = require('chess.js');
 const path = require('path');
 
-//express instance
 const app = express();
-
-//socket instance using http server based on node instance
 const server = http.createServer(app);
 const io = socket(server);
 
-//chess instance
 const chess = new Chess();
 
-//stores w/b with it's id as socket_id
 const players = {};
-const currentPlayer = 'w';
+let currentPlayer = 'w';
 
-// set the view engine to ejs
-app.set('view engine','ejs');
+app.set('view engine', 'ejs');
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/',(req,res) => {
+app.get('/', (req, res) => {
     res.render('index');
 });
 
-//handle player connection
 io.on("connection", function(uniquesocket) {
     console.log("Connected");
 
-    if(!players.white){
+    if (!players.white) {
         players.white = uniquesocket.id;
-        uniquesocket.emit("playrole","b");
-    }
-    else if(!players.black)
-    {
+        uniquesocket.emit("playerRole", "w");
+    } else if (!players.black) {
         players.black = uniquesocket.id;
-        uniquesocket.emit("playrole","b");
-    }
-    else{
+        uniquesocket.emit("playerRole", "b");
+    } else {
         uniquesocket.emit("spectator");
     }
 
-    //handle movement of pieces
-    uniquesocket.on("move",(move)=>{
-        try{
-            //check if player turn is valid
-            if(uniquesocket.id === players.white && chess.turn()!=="w") return;
-            if(uniquesocket.id === players.black && chess.turn()!=="b") return;
+    uniquesocket.emit("boardState", chess.fen());
 
-            //try catch is for this
+    uniquesocket.on("move", (move) => {
+        try {
+            if (
+                (uniquesocket.id === players.white && chess.turn() !== "w") ||
+                (uniquesocket.id === players.black && chess.turn() !== "b")
+            ) {
+                uniquesocket.emit("invalidMove", move);
+                return;
+            }
+
             const result = chess.move(move);
 
-            if(result){
+            if (result) {
                 currentPlayer = chess.turn();
-                io.emit("move",move);
-                io.emit("boardState",chess.fen());
+                io.emit("move", move);
+                io.emit("boardState", chess.fen());
+            } else {
+                console.log("Invalid move: " + JSON.stringify(move));
+                uniquesocket.emit("invalidMove", move);
             }
-            else{
-                console.log("invalid move" + move);
-                uniquesocket.emit("invalidMove",move);      
-            }
-        }
-        catch(err){
+        } catch (err) {
             console.log(err);
-            uniquesocket.emit("invalidMove",move);
+            uniquesocket.emit("invalidMove", move);
         }
-    })
+    });
 
-    uniquesocket.on("disconnect",()=>{
-        if(uniquesocket.id === players.white){
+    uniquesocket.on("disconnect", () => {
+        if (uniquesocket.id === players.white) {
             delete players.white;
         }
-        if(uniquesocket.id === players.black){
+        if (uniquesocket.id === players.black) {
             delete players.black;
         }
-    })
+    });
 });
 
-
-server.listen(3000,function(){
-    console.log("page served");
+server.listen(3000, function() {
+    console.log("Server running on port 3000");
 });
-
-
-
-
-
